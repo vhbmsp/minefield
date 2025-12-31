@@ -5,18 +5,19 @@ import sys
 import copy
 
 # Constants
-TOP_BAR_HEIGHT = 100
+TOP_BAR_HEIGHT = 80
 
-WIDTH, HEIGHT = 1000 , 560  + TOP_BAR_HEIGHT
-CELL_SIZE = 40
-BOARD_ROWS = 12  # Playable rows (excluding top and bottom safe zones)
-BOARD_COLS = 19
+WIDTH, HEIGHT = 1000 , 510  + TOP_BAR_HEIGHT
+CELL_SIZE = 30
+BOARD_ROWS = 15  # Playable rows (excluding top and bottom safe zones)
+BOARD_COLS = 25
 TOTAL_ROWS = BOARD_ROWS + 2  # +2 for top and bottom safe zones
 MINES_PER_ROW = 3  # For the first level
 
 FONT_SIZE = 36
 
 POINTS_PER_CELL = 10
+POINTS_PER_LEVEL = 500
 VISITED_CELL = -2  # Value for cells that have been visited and points collected
 
 # Colors
@@ -149,7 +150,12 @@ def draw_board(board, player_row=1, player_col=0, player_is_dead=False, level = 
     if player_is_dead:
         rip_text = small_font.render(f"X", True, BLACK)
         screen.blit(rip_text, (player_x - (rip_text.get_width() // 2), player_y - (rip_text.get_height() // 2)))
-        continue_text = small_font.render(f"Continue (Y/n)?", True, WHITE)
+
+        if lives > 0:
+            continue_text = small_font.render(f"You died. Continue (Y/n)?", True, WHITE)
+        else:
+            continue_text = small_font.render(f"Game Over (Press ESC to quit)", True, WHITE)
+
         screen.blit(continue_text, (WIDTH // 2 - continue_text.get_width() // 2, 15))
     else:
         pygame.draw.circle(screen, NUMBER_COLORS[2], (player_x, player_y), CELL_SIZE // 3)
@@ -181,17 +187,19 @@ def main():
     # Safe zones have no mines or numbers
     ensure_safe_path(board, mines_per_row)
 
-    # Player starts in top safe zone, left side
+    # Player starts in bottom safe zone, in the center
     player_row = BOARD_ROWS +1
     player_col = math.floor(BOARD_COLS/ 2)
 
     running = True
     while running:
         for event in pygame.event.get():
+            # User wants to quit game ?
             if event.type == pygame.QUIT or pygame.key.get_pressed()[pygame.K_ESCAPE]:
                 running = False
             # Optional: basic movement for testing (arrow keys)
             if event.type == pygame.KEYDOWN:
+                # If player is playing
                 if not player_is_dead:
                     if event.key == pygame.K_LEFT and player_col > 0:
                         player_col -= 1
@@ -204,7 +212,9 @@ def main():
                             if player_row > 0 :
                                 player_row -= 1
                             elif player_col == math.floor(BOARD_COLS/ 2):
+                                # Player win the Level !
                                 level += 1
+                                score += POINTS_PER_LEVEL
                                 mines_per_row += 1
                                 player_row = BOARD_ROWS +1
                                 player_col = math.floor(BOARD_COLS/ 2)
@@ -215,6 +225,7 @@ def main():
                     if event.key == pygame.K_y:
                         lives -= 1
                         if lives == -1:
+                            # Game ended. Reset game
                             level = 1
                             score = 0
                             lives = 3
@@ -233,11 +244,13 @@ def main():
                         running = False
 
             if not player_is_dead:
+                # test if player is on a mine
                 if board[player_row][player_col] == -1:
                     player_is_dead = True
                 else:
+                    # test if player is on an undiscovered cell
                     if board[player_row][player_col] != VISITED_CELL:
-                        score += board[player_row][player_col]
+                        score += board[player_row][player_col] # Increase Score by cell value
                         board[player_row][player_col] = VISITED_CELL  # Mark cell as visited
 
         draw_board(board, player_row, player_col, player_is_dead, level, lives, score)
